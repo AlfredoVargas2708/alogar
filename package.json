@@ -3,13 +3,13 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
-    "nodemon": "^3.1.10"
+    "nodemon": "^3.1.10",
+    "puppeteer": "^24.12.1"
   },
   "name": "alogar",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon index.js"
