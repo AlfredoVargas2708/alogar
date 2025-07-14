@@ -52,31 +52,35 @@ async function webScrapping() {
     const productsInDB = await pool.query(selectQuery);
 
     if (productsInDB.rows.length === 0) {
-      const values = [];
-      const placeholders = finalProducts
-        .map((_, i) => {
-          const offset = i * 4;
-          values.push(
-            finalProducts[i].name,
-            finalProducts[i].price,
-            finalProducts[i].image,
-            finalProducts[i].link
-          );
-          return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${
-            offset + 4
-          })`;
-        })
-        .join(", ");
+      await insertInDB(finalProducts);
+    } else {
+      if (productsInDB.rows.length === finalProducts.length) {
+        console.log("No hay productos nuevos que insertar");
+      } else if (productsInDB.rows.length > finalProducts.length) {
+        const linksFromWeb = new Set(finalProducts.map((p) => p.link));
+        const productosAEliminar = productsInDB.rows.filter(
+          (p) => !linksFromWeb.has(p.product_link)
+        );
 
-      const insertQuery = `
-        INSERT INTO products (product_name, product_price, product_image, product_link)
-        VALUES ${placeholders}
-      `;
+        for (const producto of productosAEliminar) {
+          await pool.query("DELETE FROM products WHERE product_link = $1", [
+            producto.product_link,
+          ]);
+        }
 
-      await pool.query(insertQuery, values);
-      console.log(
-        `Se insertaron ${finalProducts.length} productos (o se ignoraron si ya existían).`
-      );
+        console.log(
+          `Se eliminaron ${productosAEliminar.length} productos que ya no están en la web.`
+        );
+      } else if (productsInDB.rows.length < finalProducts.length) {
+        const linksFromDB = new Set(
+          productsInDB.rows.map((p) => p.product_link)
+        );
+        const productsToInsert = finalProducts.filter(
+          (p) => !linksFromDB.has(p.link)
+        );
+
+        await insertInDB(productsToInsert);
+      }
     }
   } catch (error) {
     console.error("Error en webScrapping:", error);
@@ -89,6 +93,32 @@ function capitalize(text) {
     return text;
   }
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+}
+
+async function insertInDB(products) {
+  const values = [];
+  const placeholders = products
+    .map((_, i) => {
+      const offset = i * 4;
+      values.push(
+        products[i].name,
+        products[i].price,
+        products[i].image,
+        products[i].link
+      );
+      return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`;
+    })
+    .join(", ");
+
+  const insertQuery = `
+        INSERT INTO products (product_name, product_price, product_image, product_link)
+        VALUES ${placeholders}
+      `;
+
+  await pool.query(insertQuery, values);
+  console.log(
+    `Se insertaron ${products.length} productos (o se ignoraron si ya existían).`
+  );
 }
 
 module.exports = { webScrapping };
