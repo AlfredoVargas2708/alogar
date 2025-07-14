@@ -96,6 +96,8 @@ function capitalize(text) {
 }
 
 async function insertInDB(products) {
+  if (products.length === 0) return;
+
   const values = [];
   const placeholders = products
     .map((_, i) => {
@@ -111,14 +113,13 @@ async function insertInDB(products) {
     .join(", ");
 
   const insertQuery = `
-        INSERT INTO products (product_name, product_price, product_image, product_link)
-        VALUES ${placeholders}
-      `;
+    INSERT INTO products (product_name, product_price, product_image, product_link)
+    VALUES ${placeholders}
+  `;
 
   await pool.query(insertQuery, values);
-  console.log(
-    `Se insertaron ${products.length} productos (o se ignoraron si ya existían).`
-  );
+  console.log(`Se insertaron ${products.length} nuevos productos.`);
 }
+
 
 module.exports = { webScrapping };
