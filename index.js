@@ -1,4 +1,3 @@
-// server.js
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -8,20 +7,24 @@ const PORT = process.env.PORT || 3000;
 const apiRoute = require("./routes/index");
 const { webScrapping } = require("./web/scrapping");
 
-// Middlewares deben ir antes de las rutas
+// Middlewares
 app.use(cors());
 app.use(express.json());
 app.use("/api", apiRoute);
 
-// Manejo mejorado del web scraping
-setTimeout(async () => {
+// Scraping cada 10 minutos de forma segura
+async function scheduleScraping() {
   try {
     await webScrapping();
-  } catch (error) {
-    console.error("Error en web scraping:", error);
+  } catch (err) {
+    console.error("Scraping falló:", err);
+  } finally {
+    setTimeout(scheduleScraping, 600000); // espera 10 min antes de volver a ejecutar
   }
-}, 1000);
+}
+
+scheduleScraping();
 
 app.listen(PORT, () => {
-  console.log("Server running in http://localhost:3000");
+  console.log("Server running on http://localhost:" + PORT);
 });
