@@ -2,11 +2,12 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 const { pool } = require("../db/config");
-const baseUrl = "https://alogar.cl/collections/all";
+const productsBaseUrl = "https://alogar.cl/collections/all";
+const categoriesBaseUrl = "https://alogar.cl";
 
-async function webScrapping() {
+async function webScrappingProducts() {
   try {
-    const { data } = await axios.get(baseUrl);
+    const { data } = await axios.get(productsBaseUrl);
     const $ = cheerio.load(data);
 
     const pagination = $(".pagination__text").text().trim();
@@ -17,7 +18,9 @@ async function webScrapping() {
     let finalProducts = [];
 
     for (let i = actualPage; i <= finalPage; i++) {
-      const { data: pageData } = await axios.get(`${baseUrl}?page=${i}`);
+      const { data: pageData } = await axios.get(
+        `${productsBaseUrl}?page=${i}`
+      );
       const $ = cheerio.load(pageData);
 
       const products = $(".grid-view-item.product-card")
@@ -52,7 +55,20 @@ async function webScrapping() {
     const productsInDB = await pool.query(selectQuery);
 
     if (productsInDB.rows.length === 0) {
-      await insertInDB(finalProducts);
+      await insertInDB(
+        "products",
+        ["product_name", "product_price", "product_image", "product_link"],
+        finalProducts,
+        (item, col) => {
+          const map = {
+            product_name: item.name,
+            product_price: item.price,
+            product_image: item.image,
+            product_link: item.link,
+          };
+          return map[col];
+        }
+      );
     } else {
       if (productsInDB.rows.length === finalProducts.length) {
         console.log("No hay productos nuevos que insertar");
@@ -79,11 +95,103 @@ async function webScrapping() {
           (p) => !linksFromDB.has(p.link)
         );
 
-        await insertInDB(productsToInsert);
+        await insertInDB(
+          "products",
+          ["product_name", "product_price", "product_image", "product_link"],
+          productsToInsert,
+          (item, col) => {
+            const map = {
+              product_name: item.name,
+              product_price: item.price,
+              product_image: item.image,
+              product_link: item.link,
+            };
+            return map[col];
+          }
+        );
       }
     }
   } catch (error) {
-    console.error("Error en webScrapping:", error);
+    console.error("Error en webScrappingProducts:", error);
+    throw error;
+  }
+}
+
+async function webScrappingCatergories() {
+  try {
+    const { data } = await axios.get(categoriesBaseUrl);
+    const $ = cheerio.load(data);
+
+    const categories = $(".collection-grid-item")
+      .map((_, category) => {
+        let name = capitalize(
+          $(category).find(".collection-grid-item__title").text().trim()
+        );
+        let link = `${categoriesBaseUrl}${
+          $(category).find(".collection-grid-item__link")[0].attribs["href"]
+        }`;
+        return { name, link };
+      })
+      .toArray();
+
+    const selectQuery = "SELECT * FROM categories";
+    const categoriesInDB = await pool.query(selectQuery);
+
+    if (categoriesInDB.rows.length === 0) {
+      await insertInDB(
+        "categories",
+        ["category_name", "category_link"],
+        categories,
+        (item, col) => {
+          const map = {
+            category_name: item.name,
+            category_link: item.link,
+          };
+          return map[col];
+        }
+      );
+    } else {
+      if (categoriesInDB.rows.length === categories.length) {
+        console.log("No hay categorias nuevos que insertar");
+      } else if (categoriesInDB.rows.length > categories.length) {
+        const linksFromWeb = new Set(categories.map((p) => p.link));
+        const categoriasAEliminar = categoriesInDB.rows.filter(
+          (c) => !linksFromWeb.has(c.category_link)
+        );
+
+        for (const categoria of categoriasAEliminar) {
+          await pool.query("DELETE FROM categories WHERE category_link = $1", [
+            categoria.category_link,
+          ]);
+        }
+
+        console.log(
+          `Se eliminaron ${categoriasAEliminar.length} productos que ya no están en la web.`
+        );
+      } else if (categoriesInDB.rows.length < categories.length) {
+        const linksFromDB = new Set(
+          categoriesInDB.rows.map((c) => c.category_link)
+        );
+        const categoriesToInsert = categories.filter(
+          (c) => !linksFromDB.has(c.link)
+        );
+
+        await insertInDB(
+          "categories",
+          ["category_name", "category_link"],
+          categoriesToInsert,
+          (item, col) => {
+            const map = {
+              category_name: item.name,
+              category_link: item.link,
+            };
+            return map[col];
+          }
+        );
+      }
+    }
+  } catch (error) {
+    console.error("Error en webScrappingCategories:", error);
     throw error;
   }
 }
@@ -95,31 +203,30 @@ function capitalize(text) {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 }
 
-async function insertInDB(products) {
-  if (products.length === 0) return;
+async function insertInDB(tableName, columns, items, valueMapper) {
+  if (!Array.isArray(items) || items.length === 0) return;
 
   const values = [];
-  const placeholders = products
-    .map((_, i) => {
-      const offset = i * 4;
-      values.push(
-        products[i].name,
-        products[i].price,
-        products[i].image,
-        products[i].link
-      );
-      return `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`;
+  const placeholders = items
+    .map((item, i) => {
+      const offset = i * columns.length;
+      const valueGroup = columns.map((col, j) => {
+        values.push(valueMapper(item, col));
+        return `$${offset + j + 1}`;
+      });
+      return `(${valueGroup.join(", ")})`;
     })
     .join(", ");
 
   const insertQuery = `
-    INSERT INTO products (product_name, product_price, product_image, product_link)
+    INSERT INTO ${tableName} (${columns.join(", ")})
     VALUES ${placeholders}
   `;
 
   await pool.query(insertQuery, values);
-  console.log(`Se insertaron ${products.length} nuevos productos.`);
+  console.log(
+    `Se insertaron ${items.length} nuevos elementos en la tabla ${tableName}.`
+  );
 }
 
-
-module.exports = { webScrapping };
+module.exports = { webScrappingProducts, webScrappingCatergories };
