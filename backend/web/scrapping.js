@@ -1,6 +1,7 @@
 // web/scrapping.js
 const { pool } = require("../db/config");
 const { getDataWeb } = require("../functions/getDataWeb");
+const { paginationWeb } = require('../functions/paginationInWeb')
 const productsBaseUrl = "https://alogar.cl/collections/all";
 const categoriesBaseUrl = "https://alogar.cl";
 
@@ -8,14 +9,11 @@ async function webScrappingProducts() {
   try {
     const $ = await getDataWeb(productsBaseUrl);
 
-    const pagination = $(".pagination__text").text().trim();
-
-    const actualPage = pagination.split(" ")[1];
-    const finalPage = pagination.split(" ")[3];
+    const pagination = await paginationWeb($);
 
     let finalProducts = [];
 
-    for (let i = actualPage; i <= finalPage; i++) {
+    for (let i = pagination.actualPage; i <= pagination.finalPage; i++) {
       const $ = await getDataWeb(`${productsBaseUrl}?page=${i}`);
 
       const products = $(".grid-view-item.product-card")
@@ -198,13 +196,10 @@ async function relateProductsWithCategories() {
       const id = categories.rows[i]["id"];
       const $ = await getDataWeb(link);
 
-      const pagination = $(".pagination__text").text().trim();
+      const pagination = await paginationWeb($);
 
-      if (pagination) {
-        const actualPage = pagination.split(" ")[1];
-        const finalPage = pagination.split(" ")[3];
-
-        for (let i = actualPage; i <= finalPage; i++) {
+      if (pagination.pagination) {
+        for (let i = pagination.actualPage; i <= pagination.finalPage; i++) {
           const $ = await getDataWeb(`${link}?page=${i}`);
 
           const products = $(".grid-view-item.product-card")
