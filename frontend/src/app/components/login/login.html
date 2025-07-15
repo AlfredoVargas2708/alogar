@@ -1,1 +1,11 @@
-<p>login works!</p>
+<div class="d-flex justify-content-center align-items-center bg-secondary-subtle vh-100">
+    <div class="card h-75 w-25 rounded-3">
+        <div class="card-header">
+            <h1 class="header-text" [ngClass]="{'active': isLogin}" (click)="isLogin = !isLogin">Login</h1>
+            <span class="separator fs-1">/</span>
+            <h1 class="header-text" [ngClass]="{'active': !isLogin}" (click)="isLogin = !isLogin">Sign Up</h1>
+        </div>
+        <div class="card-body"></div>
+        <div class="card-footer"></div>
+    </div>
+</div>

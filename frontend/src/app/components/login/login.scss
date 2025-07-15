@@ -1,0 +1,17 @@
+.card-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 15px;
+
+    .header-text {
+        cursor: pointer;
+        font-size: 14px;
+        color: #ddd;
+
+        &.active {
+            font-size: 40px;
+            color: #000;
+        }
+    }
+}
