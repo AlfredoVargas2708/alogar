@@ -1,4 +1,4 @@
-const { pool } = require("../db/config");
+const { pool } = require("../../db/config");
 
 class ProductsController {
   async getProducts(req, res) {
@@ -26,6 +26,32 @@ class ProductsController {
       res.status(200).json({ data: result.rows });
     } catch (error) {
       console.error("Error en getProducts:", error);
+      res.status(500).send({ message: "Internal Servel Error" });
+    }
+  }
+
+  async getProductByName(req, res) {
+    try {
+      const { product } = req.params;
+
+      const query = `SELECT 
+          p.id,
+          p.product_name,
+          p.product_price,
+          array_agg(c.category_name) AS categories
+        FROM 
+          products p
+        JOIN 
+          product_categories pc ON p.id = pc.product_id
+        JOIN 
+          categories c ON pc.category_id = c.id
+        WHERE
+          p.product_name = $1
+        GROUP BY 
+          p.id`;
+      const result = await pool.query(query, [product]);
+    } catch (error) {
+      console.error("Error en getProductByName:", error);
       res.status(500).send({ message: "Internal Servel Error" });
     }
   }
