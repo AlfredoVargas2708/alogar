@@ -196,11 +196,133 @@ async function webScrappingCatergories() {
   }
 }
 
+async function relateProductsWithCategories() {
+  try {
+    const categories = await pool.query("SELECT * FROM categories");
+
+    let finalProducts = [];
+
+    for (let i = 0; i < categories.rows.length; i++) {
+      const link = categories.rows[i]["category_link"];
+      const id = categories.rows[i]["id"];
+      const { data } = await axios.get(link);
+      const $ = cheerio.load(data);
+
+      const pagination = $(".pagination__text").text().trim();
+
+      if (pagination) {
+        const actualPage = pagination.split(" ")[1];
+        const finalPage = pagination.split(" ")[3];
+
+        for (let i = actualPage; i <= finalPage; i++) {
+          const { data: pageData } = await axios.get(`${link}?page=${i}`);
+          const $ = cheerio.load(pageData);
+
+          const products = $(".grid-view-item.product-card")
+            .map((_, product) => {
+              const name = capitalize(
+                $(product).find(".product-card__title").text().trim()
+              );
+              const price = Number(
+                $(product)
+                  .find(".price-item.price-item--regular")
+                  .text()
+                  .trim()
+                  .replace("$", "")
+                  .replace(".", "")
+              );
+              const image = `https:${$(product)
+                .find("img")[0]
+                .attribs["data-src"].replace("{width}", "180")}`;
+              const link = `https://alogar.cl${
+                $(product).find(".grid-view-item__link")[0].attribs["href"]
+              }`;
+              return { category_id: id, name, price, image, link };
+            })
+            .toArray();
+
+          finalProducts.push(products);
+        }
+      } else {
+        const { data: pageData } = await axios.get(link);
+        const $ = cheerio.load(pageData);
+
+        const products = $(".grid-view-item.product-card")
+          .map((_, product) => {
+            const name = capitalize(
+              $(product).find(".product-card__title").text().trim()
+            );
+            const price = Number(
+              $(product)
+                .find(".price-item.price-item--regular")
+                .text()
+                .trim()
+                .replace("$", "")
+                .replace(".", "")
+            );
+            const image = `https:${$(product)
+              .find("img")[0]
+              .attribs["data-src"].replace("{width}", "180")}`;
+            const link = `https://alogar.cl${
+              $(product).find(".grid-view-item__link")[0].attribs["href"]
+            }`;
+            return { category_id: id, name, price, image, link };
+          })
+          .toArray();
+
+        finalProducts.push(products);
+      }
+    }
+    finalProducts = finalProducts.flat();
+
+    const productsInDB = await pool.query("SELECT * FROM products");
+
+    const encontrados = encontrarCoincidenciasAgrupadas(
+      productsInDB.rows,
+      finalProducts
+    );
+
+    for (let i = 0; i < encontrados.length; i++) {
+      for (let j = 0; j < encontrados[i].coincidencias.length; j++) {
+        const insertQuery = `INSERT INTO product_categories VALUES (${encontrados[i].id}, ${encontrados[i].coincidencias[j].category_id}) `;
+        await pool.query(insertQuery);
+      }
+    }
+    console.log('Datos ingresados')
+  } catch (error) {
+    console.error("Error en relateProductsWithCategories:", error);
+    throw error;
+  }
+}
+
 function capitalize(text) {
   if (typeof text !== "string" || text.length === 0) {
     return text;
   }
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+}
+
+function encontrarCoincidenciasAgrupadas(lista1, lista2) {
+  return lista1.map((producto) => {
+    const nombreNormalizado = producto.product_name
+      .toLowerCase()
+      .replace(/[•·\-]/g, "")
+      .trim();
+
+    const coincidencias = lista2.filter((item2) => {
+      const nombre2Normalizado = item2.name
+        .toLowerCase()
+        .replace(/[•·\-]/g, "")
+        .trim();
+      return nombre2Normalizado === nombreNormalizado;
+    });
+
+    return {
+      id: producto.id,
+      nombre: producto.product_name,
+      coincidencias: coincidencias, // Si no hay coincidencias, será []
+    };
+  });
 }
 
 async function insertInDB(tableName, columns, items, valueMapper) {
@@ -229,4 +351,8 @@ async function insertInDB(tableName, columns, items, valueMapper) {
   );
 }
 
-module.exports = { webScrappingProducts, webScrappingCatergories };
+module.exports = {
+  webScrappingProducts,
+  webScrappingCatergories,
+  relateProductsWithCategories,
+};
