@@ -1,27 +1,22 @@
 // web/scrapping.js
-const axios = require("axios");
-const cheerio = require("cheerio");
 const { pool } = require("../db/config");
+const { createSetTo } = require("../functions/createSetTo.js");
+const { getDataWeb } = require("../functions/getDataWeb");
+const { paginationWeb } = require("../functions/paginationInWeb");
+const { insertInDB } = require('../functions/insertInDB.js')
 const productsBaseUrl = "https://alogar.cl/collections/all";
 const categoriesBaseUrl = "https://alogar.cl";
 
 async function webScrappingProducts() {
   try {
-    const { data } = await axios.get(productsBaseUrl);
-    const $ = cheerio.load(data);
+    const $ = await getDataWeb(productsBaseUrl);
 
-    const pagination = $(".pagination__text").text().trim();
-
-    const actualPage = pagination.split(" ")[1];
-    const finalPage = pagination.split(" ")[3];
+    const pagination = await paginationWeb($);
 
     let finalProducts = [];
 
-    for (let i = actualPage; i <= finalPage; i++) {
-      const { data: pageData } = await axios.get(
-        `${productsBaseUrl}?page=${i}`
-      );
-      const $ = cheerio.load(pageData);
+    for (let i = pagination.actualPage; i <= pagination.finalPage; i++) {
+      const $ = await getDataWeb(`${productsBaseUrl}?page=${i}`);
 
       const products = $(".grid-view-item.product-card")
         .map((_, product) => {
@@ -36,13 +31,10 @@ async function webScrappingProducts() {
               .replace("$", "")
               .replace(".", "")
           );
-          const image = `https:${$(product)
-            .find("img")[0]
-            .attribs["data-src"].replace("{width}", "180")}`;
           const link = `https://alogar.cl${
             $(product).find(".grid-view-item__link")[0].attribs["href"]
           }`;
-          return { name, price, image, link };
+          return { name, price, link };
         })
         .toArray();
 
@@ -57,13 +49,12 @@ async function webScrappingProducts() {
     if (productsInDB.rows.length === 0) {
       await insertInDB(
         "products",
-        ["product_name", "product_price", "product_image", "product_link"],
+        ["product_name", "product_price", "product_link"],
         finalProducts,
         (item, col) => {
           const map = {
             product_name: item.name,
             product_price: item.price,
-            product_image: item.image,
             product_link: item.link,
           };
           return map[col];
@@ -74,41 +65,20 @@ async function webScrappingProducts() {
       if (productsInDB.rows.length === finalProducts.length) {
         console.log("No hay productos nuevos que insertar");
       } else if (productsInDB.rows.length > finalProducts.length) {
-        const linksFromWeb = new Set(finalProducts.map((p) => p.link));
-        const productosAEliminar = productsInDB.rows.filter(
-          (p) => !linksFromWeb.has(p.product_link)
-        );
-
-        for (const producto of productosAEliminar) {
-          await pool.query("DELETE FROM products WHERE product_link = $1", [
-            producto.product_link,
-          ]);
-        }
-
-        console.log(
-          `Se eliminaron ${productosAEliminar.length} productos que ya no están en la web.`
+        await createSetTo(
+          "DELETE",
+          finalProducts,
+          productsInDB,
+          "products",
+          "product_link"
         );
       } else if (productsInDB.rows.length < finalProducts.length) {
-        const linksFromDB = new Set(
-          productsInDB.rows.map((p) => p.product_link)
-        );
-        const productsToInsert = finalProducts.filter(
-          (p) => !linksFromDB.has(p.link)
-        );
-
-        await insertInDB(
+        await createSetTo(
+          "INSERT",
+          finalProducts,
+          productsInDB,
           "products",
-          ["product_name", "product_price", "product_image", "product_link"],
-          productsToInsert,
-          (item, col) => {
-            const map = {
-              product_name: item.name,
-              product_price: item.price,
-              product_image: item.image,
-              product_link: item.link,
-            };
-            return map[col];
-          }
+          "product_link"
         );
         await relateProductsWithCategories();
       }
@@ -121,8 +91,7 @@ async function webScrappingProducts() {
 
 async function webScrappingCatergories() {
   try {
-    const { data } = await axios.get(categoriesBaseUrl);
-    const $ = cheerio.load(data);
+    const $ = await getDataWeb(categoriesBaseUrl);
 
     const categories = $(".collection-grid-item")
       .map((_, category) => {
@@ -156,39 +125,20 @@ async function webScrappingCatergories() {
       if (categoriesInDB.rows.length === categories.length) {
         console.log("No hay categorias nuevos que insertar");
       } else if (categoriesInDB.rows.length > categories.length) {
-        const linksFromWeb = new Set(categories.map((p) => p.link));
-        const categoriasAEliminar = categoriesInDB.rows.filter(
-          (c) => !linksFromWeb.has(c.category_link)
-        );
-
-        for (const categoria of categoriasAEliminar) {
-          await pool.query("DELETE FROM categories WHERE category_link = $1", [
-            categoria.category_link,
-          ]);
-        }
-
-        console.log(
-          `Se eliminaron ${categoriasAEliminar.length} productos que ya no están en la web.`
+        await createSetTo(
+          "DELETE",
+          categories,
+          categoriesInDB,
+          "categories",
+          "category_link"
         );
       } else if (categoriesInDB.rows.length < categories.length) {
-        const linksFromDB = new Set(
-          categoriesInDB.rows.map((c) => c.category_link)
-        );
-        const categoriesToInsert = categories.filter(
-          (c) => !linksFromDB.has(c.link)
-        );
-
-        await insertInDB(
+        await createSetTo(
+          "INSERT",
+          categoriesInDB,
+          categories,
           "categories",
-          ["category_name", "category_link"],
-          categoriesToInsert,
-          (item, col) => {
-            const map = {
-              category_name: item.name,
-              category_link: item.link,
-            };
-            return map[col];
-          }
+          "category_link"
         );
       }
     }
@@ -207,18 +157,13 @@ async function relateProductsWithCategories() {
     for (let i = 0; i < categories.rows.length; i++) {
       const link = categories.rows[i]["category_link"];
       const id = categories.rows[i]["id"];
-      const { data } = await axios.get(link);
-      const $ = cheerio.load(data);
+      const $ = await getDataWeb(link);
 
-      const pagination = $(".pagination__text").text().trim();
+      const pagination = await paginationWeb($);
 
-      if (pagination) {
-        const actualPage = pagination.split(" ")[1];
-        const finalPage = pagination.split(" ")[3];
-
-        for (let i = actualPage; i <= finalPage; i++) {
-          const { data: pageData } = await axios.get(`${link}?page=${i}`);
-          const $ = cheerio.load(pageData);
+      if (pagination.pagination) {
+        for (let i = pagination.actualPage; i <= pagination.finalPage; i++) {
+          const $ = await getDataWeb(`${link}?page=${i}`);
 
           const products = $(".grid-view-item.product-card")
             .map((_, product) => {
@@ -233,21 +178,17 @@ async function relateProductsWithCategories() {
                   .replace("$", "")
                   .replace(".", "")
               );
-              const image = `https:${$(product)
-                .find("img")[0]
-                .attribs["data-src"].replace("{width}", "180")}`;
               const link = `https://alogar.cl${
                 $(product).find(".grid-view-item__link")[0].attribs["href"]
               }`;
-              return { category_id: id, name, price, image, link };
+              return { category_id: id, name, price, link };
             })
             .toArray();
 
           finalProducts.push(products);
         }
       } else {
-        const { data: pageData } = await axios.get(link);
-        const $ = cheerio.load(pageData);
+        const $ = await getDataWeb(link);
 
         const products = $(".grid-view-item.product-card")
           .map((_, product) => {
@@ -262,13 +203,10 @@ async function relateProductsWithCategories() {
                 .replace("$", "")
                 .replace(".", "")
             );
-            const image = `https:${$(product)
-              .find("img")[0]
-              .attribs["data-src"].replace("{width}", "180")}`;
             const link = `https://alogar.cl${
               $(product).find(".grid-view-item__link")[0].attribs["href"]
             }`;
-            return { category_id: id, name, price, image, link };
+            return { category_id: id, name, price, link };
           })
           .toArray();
 
@@ -327,34 +265,9 @@ function encontrarCoincidenciasAgrupadas(lista1, lista2) {
   });
 }
 
-async function insertInDB(tableName, columns, items, valueMapper) {
-  if (!Array.isArray(items) || items.length === 0) return;
-
-  const values = [];
-  const placeholders = items
-    .map((item, i) => {
-      const offset = i * columns.length;
-      const valueGroup = columns.map((col, j) => {
-        values.push(valueMapper(item, col));
-        return `$${offset + j + 1}`;
-      });
-      return `(${valueGroup.join(", ")})`;
-    })
-    .join(", ");
-
-  const insertQuery = `
-    INSERT INTO ${tableName} (${columns.join(", ")})
-    VALUES ${placeholders}
-  `;
-
-  await pool.query(insertQuery, values);
-  console.log(
-    `Se insertaron ${items.length} nuevos elementos en la tabla ${tableName}.`
-  );
-}
-
 module.exports = {
   webScrappingProducts,
   webScrappingCatergories,
   relateProductsWithCategories,
+  encontrarCoincidenciasAgrupadas,
 };
