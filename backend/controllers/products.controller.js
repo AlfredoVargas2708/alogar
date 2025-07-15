@@ -4,10 +4,6 @@ const { createPagination } = require("../functions/createPagination");
 class ProductsController {
   async getProducts(req, res) {
     try {
-      const { page, pageSize } = req.query;
-      const limit = parseInt(pageSize, 10) || 10;
-      const offset = (Math.max(1, parseInt(page, 10) || 1) - 1) * limit;
-
       const query = `SELECT 
           p.id,
           p.product_name,
@@ -17,16 +13,31 @@ class ProductsController {
           array_agg(c.category_name) AS categories
         FROM 
           products p
-        JOIN 
+        LEFT JOIN 
           product_categories pc ON p.id = pc.product_id
-        JOIN 
+        LEFT JOIN 
           categories c ON pc.category_id = c.id
         GROUP BY 
           p.id
-        LIMIT $1 OFFSET $2`;
-      const result = await pool.query(query, [limit, offset]);
+        ORDER BY
+          p.id`;
+      const result = await pool.query(query);
 
-      res.status(200).json({ data: result.rows });
+      const paginationCreated = createPagination(
+        result,
+        parseInt(req.query.page),
+        parseInt(req.query.limit)
+      );
+
+      res.status(200).send({
+        data: paginationCreated.paginatedItems,
+        pagination: {
+          totalItems: paginationCreated.totalItems,
+          totalPages: paginationCreated.totalPages,
+          currentPage: paginationCreated.page,
+          itemsPerPage: paginationCreated.limit,
+        },
+      });
     } catch (error) {
       console.error("Error en getProducts:", error);
       res.status(500).send({ message: "Internal Server Error" });
@@ -37,6 +48,12 @@ class ProductsController {
     try {
       const { product } = req.params;
 
+      if (!req.query.page || !req.query.limit) {
+        return res
+          .status(404)
+          .send({ message: "Faltan valores para la páginación" });
+      }
+
       const query = `SELECT 
         p.id,
         p.product_name,
@@ -46,9 +63,9 @@ class ProductsController {
         array_agg(c.category_name) AS categories
       FROM 
         products p
-      JOIN 
+      LEFT JOIN 
         product_categories pc ON p.id = pc.product_id
-      JOIN 
+      LEFT JOIN 
         categories c ON pc.category_id = c.id
       WHERE
         p.product_name ILIKE $1
@@ -66,7 +83,7 @@ class ProductsController {
       );
 
       res.status(200).send({
-        data: paginationCreated.paginatedProducts,
+        data: paginationCreated.paginatedItems,
         pagination: {
           totalItems: paginationCreated.totalItems,
           totalPages: paginationCreated.totalPages,
@@ -90,6 +107,12 @@ class ProductsController {
         return res.status(400).send({ message: "IDs de categoría inválidos" });
       }
 
+      if (!req.query.page || !req.query.limit) {
+        return res
+          .status(404)
+          .send({ message: "Faltan valores para la páginación" });
+      }
+
       const query = `
           SELECT 
             p.id,
@@ -100,9 +123,9 @@ class ProductsController {
             array_agg(c.category_name) AS categories
           FROM 
             products p
-          JOIN 
+          LEFT JOIN 
             product_categories pc ON p.id = pc.product_id
-          JOIN 
+          LEFT JOIN 
             categories c ON pc.category_id = c.id
           WHERE
             (SELECT COUNT(*) 
@@ -130,7 +153,7 @@ class ProductsController {
       );
 
       res.status(200).send({
-        data: paginationCreated.paginatedProducts,
+        data: paginationCreated.paginatedItems,
         pagination: {
           totalItems: paginationCreated.totalItems,
           totalPages: paginationCreated.totalPages,
@@ -148,6 +171,12 @@ class ProductsController {
     try {
       const { code } = req.params;
 
+      if (!req.query.page || !req.query.limit) {
+        return res
+          .status(404)
+          .send({ message: "Faltan valores para la páginación" });
+      }
+
       const query = `SELECT 
           p.id,
           p.product_name,
@@ -157,9 +186,9 @@ class ProductsController {
           array_agg(c.category_name) AS categories
         FROM 
           products p
-        JOIN 
+        LEFT JOIN 
           product_categories pc ON p.id = pc.product_id
-        JOIN 
+        LEFT JOIN 
           categories c ON pc.category_id = c.id
         WHERE
           p.product_code = $1
@@ -168,7 +197,7 @@ class ProductsController {
         ORDER BY
           p.id`;
       const result = await pool.query(query, [code]);
-      
+
       const paginationCreated = createPagination(
         result,
         parseInt(req.query.page),
@@ -176,7 +205,7 @@ class ProductsController {
       );
 
       res.status(200).send({
-        data: paginationCreated.paginatedProducts,
+        data: paginationCreated.paginatedItems,
         pagination: {
           totalItems: paginationCreated.totalItems,
           totalPages: paginationCreated.totalPages,

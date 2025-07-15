@@ -4,10 +4,10 @@ function createPagination(result, page, limit) {
   const allProducts = result.rows;
   const totalItems = allProducts.length;
 
-  const paginatedProducts = allProducts.slice(offset, offset + limit);
+  const paginatedItems = allProducts.slice(offset, offset + limit);
   const totalPages = Math.ceil(totalItems / limit);
 
-  return { page, limit, totalItems, paginatedProducts, totalPages }
+  return { page, limit, totalItems, paginatedItems, totalPages }
 }
 
 module.exports = { createPagination }
