@@ -357,4 +357,5 @@ module.exports = {
   webScrappingProducts,
   webScrappingCatergories,
   relateProductsWithCategories,
+  encontrarCoincidenciasAgrupadas
 };
