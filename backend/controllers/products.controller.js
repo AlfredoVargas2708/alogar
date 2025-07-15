@@ -1,4 +1,5 @@
 const { pool } = require("../db/config");
+const { createPagination } = require("../functions/createPagination");
 
 class ProductsController {
   async getProducts(req, res) {
@@ -11,6 +12,8 @@ class ProductsController {
           p.id,
           p.product_name,
           p.product_price,
+          p.product_weighable,
+          p.product_link,
           array_agg(c.category_name) AS categories
         FROM 
           products p
@@ -35,24 +38,42 @@ class ProductsController {
       const { product } = req.params;
 
       const query = `SELECT 
-          p.id,
-          p.product_name,
-          p.product_price,
-          array_agg(c.category_name) AS categories
-        FROM 
-          products p
-        JOIN 
-          product_categories pc ON p.id = pc.product_id
-        JOIN 
-          categories c ON pc.category_id = c.id
-        WHERE
-          p.product_name ILIKE $1
-        GROUP BY 
-          p.id
-        ORDER BY
-          p.id`;
+        p.id,
+        p.product_name,
+        p.product_price,
+        p.product_weighable,
+        p.product_link,
+        array_agg(c.category_name) AS categories
+      FROM 
+        products p
+      JOIN 
+        product_categories pc ON p.id = pc.product_id
+      JOIN 
+        categories c ON pc.category_id = c.id
+      WHERE
+        p.product_name ILIKE $1
+      GROUP BY 
+        p.id
+      ORDER BY
+        p.id`;
+
       const result = await pool.query(query, [`%${product}%`]);
-      res.status(200).send({ data: result.rows });
+
+      const paginationCreated = createPagination(
+        result,
+        parseInt(req.query.page),
+        parseInt(req.query.limit)
+      );
+
+      res.status(200).send({
+        data: paginationCreated.paginatedProducts,
+        pagination: {
+          totalItems: paginationCreated.totalItems,
+          totalPages: paginationCreated.totalPages,
+          currentPage: paginationCreated.page,
+          itemsPerPage: paginationCreated.limit,
+        },
+      });
     } catch (error) {
       console.error("Error en getProductByName:", error);
       res.status(500).send({ message: "Internal Server Error" });
@@ -61,13 +82,10 @@ class ProductsController {
 
   async getProductsByCategories(req, res) {
     try {
-      // Recibimos un string de IDs separados por comas: "1,5,8"
       const { category_ids } = req.params;
 
-      // Convertimos a array de números
       const idsArray = category_ids.split(",").map((id) => parseInt(id.trim()));
 
-      // Validación
       if (!idsArray.every((id) => Number.isInteger(id))) {
         return res.status(400).send({ message: "IDs de categoría inválidos" });
       }
@@ -77,6 +95,8 @@ class ProductsController {
             p.id,
             p.product_name,
             p.product_price,
+            p.product_weighable,
+            p.product_link,
             array_agg(c.category_name) AS categories
           FROM 
             products p
@@ -95,7 +115,6 @@ class ProductsController {
           ORDER BY
             p.product_name`;
 
-      // Ejecutar con el array de IDs y el conteo esperado
       const result = await pool.query(query, [idsArray, idsArray.length]);
 
       if (result.rows.length === 0) {
@@ -104,9 +123,69 @@ class ProductsController {
         });
       }
 
-      res.status(200).send({ data: result.rows });
+      const paginationCreated = createPagination(
+        result,
+        parseInt(req.query.page),
+        parseInt(req.query.limit)
+      );
+
+      res.status(200).send({
+        data: paginationCreated.paginatedProducts,
+        pagination: {
+          totalItems: paginationCreated.totalItems,
+          totalPages: paginationCreated.totalPages,
+          currentPage: paginationCreated.page,
+          itemsPerPage: paginationCreated.limit,
+        },
+      });
     } catch (error) {
       console.error("Error en getProductsByCategories:", error);
+      res.status(500).send({ message: "Internal Server Error" });
+    }
+  }
+
+  async getProductByCode(req, res) {
+    try {
+      const { code } = req.params;
+
+      const query = `SELECT 
+          p.id,
+          p.product_name,
+          p.product_price,
+          p.product_weighable,
+          p.product_link,
+          array_agg(c.category_name) AS categories
+        FROM 
+          products p
+        JOIN 
+          product_categories pc ON p.id = pc.product_id
+        JOIN 
+          categories c ON pc.category_id = c.id
+        WHERE
+          p.product_code = $1
+        GROUP BY 
+          p.id
+        ORDER BY
+          p.id`;
+      const result = await pool.query(query, [code]);
+      
+      const paginationCreated = createPagination(
+        result,
+        parseInt(req.query.page),
+        parseInt(req.query.limit)
+      );
+
+      res.status(200).send({
+        data: paginationCreated.paginatedProducts,
+        pagination: {
+          totalItems: paginationCreated.totalItems,
+          totalPages: paginationCreated.totalPages,
+          currentPage: paginationCreated.page,
+          itemsPerPage: paginationCreated.limit,
+        },
+      });
+    } catch (error) {
+      console.error("Error in getProductByCode", error);
       res.status(500).send({ message: "Internal Server Error" });
     }
   }
