@@ -23,7 +23,7 @@ async function scheduleScraping() {
   } catch (err) {
     console.error("Scraping falló:", err);
   } finally {
-    setTimeout(scheduleScraping, 600000); // espera 10 min antes de volver a ejecutar
+    setTimeout(scheduleScraping, 3600000); // espera 1 hora antes de volver a ejecutar
   }
 }
 
