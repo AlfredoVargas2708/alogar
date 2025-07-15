@@ -1,4 +1,4 @@
-export async function paginationWeb($) {
+async function paginationWeb($) {
   const pagination = $(".pagination__text").text().trim();
 
   const actualPage = pagination.split(" ")[1];
@@ -6,3 +6,5 @@ export async function paginationWeb($) {
 
   return { pagination, actualPage, finalPage }
 }
+
+module.exports = { paginationWeb }

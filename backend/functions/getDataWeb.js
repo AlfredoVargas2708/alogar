@@ -1,9 +1,11 @@
-import axios from "axios";
-import * as cheerio from "cheerio"; // Importar todo el namespace
+const axios = require("axios");
+const cheerio = require("cheerio");
 
-export async function getDataWeb(url) {
+async function getDataWeb(url) {
   const { data } = await axios.get(url);
-  const $ = cheerio.load(data); // Usar cheerio.load()
+  const $ = cheerio.load(data);
 
-  return $;
+  return $
 }
+
+module.exports = { getDataWeb }

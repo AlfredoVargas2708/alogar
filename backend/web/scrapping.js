@@ -1,7 +1,9 @@
 // web/scrapping.js
 const { pool } = require("../db/config");
+const { createSetTo } = require("../functions/createSetTo.js");
 const { getDataWeb } = require("../functions/getDataWeb");
-const { paginationWeb } = require('../functions/paginationInWeb')
+const { paginationWeb } = require("../functions/paginationInWeb");
+const { insertInDB } = require('../functions/insertInDB.js')
 const productsBaseUrl = "https://alogar.cl/collections/all";
 const categoriesBaseUrl = "https://alogar.cl";
 
@@ -63,40 +65,20 @@ async function webScrappingProducts() {
       if (productsInDB.rows.length === finalProducts.length) {
         console.log("No hay productos nuevos que insertar");
       } else if (productsInDB.rows.length > finalProducts.length) {
-        const linksFromWeb = new Set(finalProducts.map((p) => p.link));
-        const productosAEliminar = productsInDB.rows.filter(
-          (p) => !linksFromWeb.has(p.product_link)
-        );
-
-        for (const producto of productosAEliminar) {
-          await pool.query("DELETE FROM products WHERE product_link = $1", [
-            producto.product_link,
-          ]);
-        }
-
-        console.log(
-          `Se eliminaron ${productosAEliminar.length} productos que ya no están en la web.`
+        await createSetTo(
+          "DELETE",
+          finalProducts,
+          productsInDB,
+          "products",
+          "product_link"
         );
       } else if (productsInDB.rows.length < finalProducts.length) {
-        const linksFromDB = new Set(
-          productsInDB.rows.map((p) => p.product_link)
-        );
-        const productsToInsert = finalProducts.filter(
-          (p) => !linksFromDB.has(p.link)
-        );
-
-        await insertInDB(
+        await createSetTo(
+          "INSERT",
+          finalProducts,
+          productsInDB,
           "products",
-          ["product_name", "product_price", "product_link"],
-          productsToInsert,
-          (item, col) => {
-            const map = {
-              product_name: item.name,
-              product_price: item.price,
-              product_link: item.link,
-            };
-            return map[col];
-          }
+          "product_link"
         );
         await relateProductsWithCategories();
       }
@@ -143,39 +125,20 @@ async function webScrappingCatergories() {
       if (categoriesInDB.rows.length === categories.length) {
         console.log("No hay categorias nuevos que insertar");
       } else if (categoriesInDB.rows.length > categories.length) {
-        const linksFromWeb = new Set(categories.map((p) => p.link));
-        const categoriasAEliminar = categoriesInDB.rows.filter(
-          (c) => !linksFromWeb.has(c.category_link)
-        );
-
-        for (const categoria of categoriasAEliminar) {
-          await pool.query("DELETE FROM categories WHERE category_link = $1", [
-            categoria.category_link,
-          ]);
-        }
-
-        console.log(
-          `Se eliminaron ${categoriasAEliminar.length} productos que ya no están en la web.`
+        await createSetTo(
+          "DELETE",
+          categories,
+          categoriesInDB,
+          "categories",
+          "category_link"
         );
       } else if (categoriesInDB.rows.length < categories.length) {
-        const linksFromDB = new Set(
-          categoriesInDB.rows.map((c) => c.category_link)
-        );
-        const categoriesToInsert = categories.filter(
-          (c) => !linksFromDB.has(c.link)
-        );
-
-        await insertInDB(
+        await createSetTo(
+          "INSERT",
+          categoriesInDB,
+          categories,
           "categories",
-          ["category_name", "category_link"],
-          categoriesToInsert,
-          (item, col) => {
-            const map = {
-              category_name: item.name,
-              category_link: item.link,
-            };
-            return map[col];
-          }
+          "category_link"
         );
       }
     }
@@ -300,32 +263,6 @@ function encontrarCoincidenciasAgrupadas(lista1, lista2) {
       coincidencias: coincidencias, // Si no hay coincidencias, será []
     };
   });
-}
-
-async function insertInDB(tableName, columns, items, valueMapper) {
-  if (!Array.isArray(items) || items.length === 0) return;
-
-  const values = [];
-  const placeholders = items
-    .map((item, i) => {
-      const offset = i * columns.length;
-      const valueGroup = columns.map((col, j) => {
-        values.push(valueMapper(item, col));
-        return `$${offset + j + 1}`;
-      });
-      return `(${valueGroup.join(", ")})`;
-    })
-    .join(", ");
-
-  const insertQuery = `
-    INSERT INTO ${tableName} (${columns.join(", ")})
-    VALUES ${placeholders}
-  `;
-
-  await pool.query(insertQuery, values);
-  console.log(
-    `Se insertaron ${items.length} nuevos elementos en la tabla ${tableName}.`
-  );
 }
 
 module.exports = {

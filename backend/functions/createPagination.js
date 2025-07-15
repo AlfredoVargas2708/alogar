@@ -1,4 +1,4 @@
-export function createPagination(result, page, limit) {
+function createPagination(result, page, limit) {
   const offset = (page - 1) * limit;
 
   const allProducts = result.rows;
@@ -9,3 +9,5 @@ export function createPagination(result, page, limit) {
 
   return { page, limit, totalItems, paginatedProducts, totalPages }
 }
+
+module.exports = { createPagination }
