@@ -69,6 +69,7 @@ async function webScrappingProducts() {
           return map[col];
         }
       );
+      await relateProductsWithCategories();
     } else {
       if (productsInDB.rows.length === finalProducts.length) {
         console.log("No hay productos nuevos que insertar");
@@ -109,6 +110,7 @@ async function webScrappingProducts() {
             return map[col];
           }
         );
+        await relateProductsWithCategories();
       }
     }
   } catch (error) {
@@ -288,7 +290,7 @@ async function relateProductsWithCategories() {
         await pool.query(insertQuery);
       }
     }
-    console.log('Datos ingresados')
+    console.log("Datos ingresados");
   } catch (error) {
     console.error("Error en relateProductsWithCategories:", error);
     throw error;
