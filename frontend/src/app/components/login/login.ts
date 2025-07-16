@@ -19,12 +19,12 @@ export class Login {
   // * Constructor
   constructor(private fb: FormBuilder, private modalService: MatDialog) {
     this.loginForm = this.fb.group({
-      name: ['', Validators.required],
+      email: ['', Validators.required, Validators.email],
       password: ['', [Validators.required, Validators.minLength(8)]]
     });
 
     this.signUpForm = this.fb.group({
-      name: ['', Validators.required],
+      email: ['', Validators.required],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required, Validators.minLength(8)]]
     }, {
