@@ -51,14 +51,16 @@ export class Login {
     });
 
     dialogRef.afterClosed().subscribe(email => {
-      this.loginService.sendResetPassword(email).subscribe({
-        next: (result) => {
-          console.log(result);
-        },
-        error: (error) => {
-          console.error('Error al enviar correo:', error);
-        }
-      })
+      if (email) {
+        this.loginService.sendResetPassword(email).subscribe({
+          next: (result) => {
+            console.log(result);
+          },
+          error: (error) => {
+            console.error('Error al enviar correo:', error);
+          }
+        })
+      }
     })
   }
 
