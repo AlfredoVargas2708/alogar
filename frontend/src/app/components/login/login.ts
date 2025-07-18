@@ -24,12 +24,12 @@ export class Login {
     private loginService: LoginService
   ) {
     this.loginForm = this.fb.group({
-      email: ['', Validators.required, Validators.email],
+      email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]]
     });
 
     this.signUpForm = this.fb.group({
-      email: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required, Validators.minLength(8)]]
     }, {
@@ -51,15 +51,36 @@ export class Login {
     });
 
     dialogRef.afterClosed().subscribe(email => {
-      this.loginService.sendResetPassword(email).subscribe({
-        next: (result) => {
-          console.log(result);
-        },
-        error: (error) => {
-          console.error('Error al enviar correo:', error);
-        }
-      })
+      if (email) {
+        this.loginService.sendResetPassword(email).subscribe({
+          next: (result) => {
+            console.log(result);
+          },
+          error: (error) => {
+            console.error('Error al enviar correo:', error);
+          }
+        })
+      }
     })
+  }
+
+  getError(controlName: string): string | null {
+    const form = this.isLogin ? this.loginForm : this.signUpForm;
+    const control = form.get(controlName);
+
+    if (control?.hasError('required')) {
+      return 'Este campo es obligatorio';
+    } else if (control?.hasError('email')) {
+      return 'Formato de correo inválido';
+    } else if (control?.hasError('minlength')) {
+      return 'La contraseña debe tener al menos 8 caracteres';
+    }
+
+    // Revisa si el grupo tiene el error de mismatch y si el control es confirmPassword
+    if (controlName === 'confirmPassword' && form.hasError('passwordsMismatch')) {
+      return 'Las contraseñas no coinciden';
+    }
+    return null;
   }
 
 }
