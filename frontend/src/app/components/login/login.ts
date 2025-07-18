@@ -65,15 +65,19 @@ export class Login {
   }
 
   getError(controlName: string): string | null {
-    const control = this.isLogin ? this.loginForm.get(controlName) : this.signUpForm.get(controlName);
-    console.log(control?.errors);
+    const form = this.isLogin ? this.loginForm : this.signUpForm;
+    const control = form.get(controlName);
+
     if (control?.hasError('required')) {
       return 'Este campo es obligatorio';
     } else if (control?.hasError('email')) {
       return 'Formato de correo inválido';
     } else if (control?.hasError('minlength')) {
       return 'La contraseña debe tener al menos 8 caracteres';
-    } else if (control?.hasError('passwordsMismatch')) {
+    }
+
+    // Revisa si el grupo tiene el error de mismatch y si el control es confirmPassword
+    if (controlName === 'confirmPassword' && form.hasError('passwordsMismatch')) {
       return 'Las contraseñas no coinciden';
     }
     return null;
