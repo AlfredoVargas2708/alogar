@@ -24,12 +24,12 @@ export class Login {
     private loginService: LoginService
   ) {
     this.loginForm = this.fb.group({
-      email: ['', Validators.required, Validators.email],
+      email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]]
     });
 
     this.signUpForm = this.fb.group({
-      email: ['', Validators.required],
+      email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required, Validators.minLength(8)]]
     }, {
@@ -62,6 +62,21 @@ export class Login {
         })
       }
     })
+  }
+
+  getError(controlName: string): string | null {
+    const control = this.isLogin ? this.loginForm.get(controlName) : this.signUpForm.get(controlName);
+    console.log(control?.errors);
+    if (control?.hasError('required')) {
+      return 'Este campo es obligatorio';
+    } else if (control?.hasError('email')) {
+      return 'Formato de correo inválido';
+    } else if (control?.hasError('minlength')) {
+      return 'La contraseña debe tener al menos 8 caracteres';
+    } else if (control?.hasError('passwordsMismatch')) {
+      return 'Las contraseñas no coinciden';
+    }
+    return null;
   }
 
 }
