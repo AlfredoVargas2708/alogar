@@ -83,4 +83,22 @@ export class Login {
     return null;
   }
 
+  signUp() {
+    if (this.signUpForm.valid) {
+      const { email, password } = this.signUpForm.value;
+      this.loginService.signUp(email, password).subscribe({
+        next: (result) => {
+          console.log('Registro exitoso:', result);
+          this.isLogin = true; // Cambia a la vista de login después del registro exitoso
+          this.loginForm.patchValue({ email, password }); // Rellena el formulario de login con los datos del registro
+          this.signUpForm.reset(); // Limpia el formulario de registro
+        },
+        error: (error) => {
+          console.error('Error al registrarse:', error);
+        }
+      });
+    }
+  }
+
+  login() {}
 }
