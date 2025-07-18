@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { UsersService } from '../../services/users.service';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-reset-password-component',
@@ -11,7 +13,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validato
 export class ResetPasswordComponent {
   resetForm!: FormGroup
 
-  constructor(private fb: FormBuilder) {
+  constructor(private fb: FormBuilder, private usersService: UsersService, private route: Router) {
     this.resetForm = this.fb.group({
       newPassword: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required, Validators.minLength(8)]]
@@ -42,5 +44,22 @@ export class ResetPasswordComponent {
       return 'Las contraseñas no coinciden';
     }
     return null;
+  }
+
+  resetPassword() {
+    if (this.resetForm.valid) {
+      const email = this.route.url.split('/')[2];
+      const newPassword = this.resetForm.get('newPassword')?.value;
+
+      this.usersService.resetPassword(email, newPassword).subscribe({
+        next: (response) => {
+          console.log('Contraseña restablecida con éxito:', response);
+          this.route.navigate(['/login']);
+        },
+        error: (error) => {
+          console.error('Error al restablecer la contraseña:', error);
+        }
+      })
+    }
   }
 }
