@@ -10,7 +10,7 @@ export class LoginService {
   constructor(private http: HttpClient) {}
 
   signUp(email: string, password: string): Observable<any> {
-    return this.http.post(`${environmenmt.apiUrl}/login/sign-up`, { email, password });
+    return this.http.post(`${environmenmt.apiUrl}/users/sign-up`, { email, password });
   }
 
   sendResetPassword(email: string):Observable<any> {
