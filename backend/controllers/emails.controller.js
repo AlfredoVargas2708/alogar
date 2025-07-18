@@ -14,7 +14,7 @@ class EmailController {
                 to: email,
                 subject: 'Password Reset Request',
                 text: 'Click the link below to reset your password:\n\nhttp://localhost:4200/new-password',
-                html: fs.readFileSync(htmlFilePath, 'utf8')
+                html: fs.readFileSync(htmlFilePath, 'utf8').replace('{{email}}', email)
             }
 
             transporter.sendMail(mailOptions, (error, info) => {
