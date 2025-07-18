@@ -10,6 +10,6 @@ export class LoginService {
   constructor(private http: HttpClient) {}
 
   sendResetPassword(email: string):Observable<any> {
-    return this.http.post(`${environmenmt.apiUrl}/emails/restart`, { email })
+    return this.http.post(`${environmenmt.apiUrl}/emails/restart`, email);
   }
 }
