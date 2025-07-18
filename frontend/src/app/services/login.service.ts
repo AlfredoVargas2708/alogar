@@ -9,6 +9,10 @@ import { environmenmt } from '../environments/environment';
 export class LoginService {
   constructor(private http: HttpClient) {}
 
+  signUp(email: string, password: string): Observable<any> {
+    return this.http.post(`${environmenmt.apiUrl}/login/sign-up`, { email, password });
+  }
+
   sendResetPassword(email: string):Observable<any> {
     return this.http.post(`${environmenmt.apiUrl}/emails/restart`, email);
   }
