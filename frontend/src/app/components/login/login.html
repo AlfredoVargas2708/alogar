@@ -1,0 +1,33 @@
+<div class="d-flex justify-content-center align-items-center bg-secondary-subtle vh-100">
+    <div class="card h-75 w-25 rounded-3">
+        <div class="card-header">
+            <h1 class="header-text" [ngClass]="{'active': isLogin}" (click)="isLogin = !isLogin">Login</h1>
+            <span class="separator fs-1">/</span>
+            <h1 class="header-text" [ngClass]="{'active': !isLogin}" (click)="isLogin = !isLogin">Sign Up</h1>
+        </div>
+        <div class="card-body py-4">
+            <form [formGroup]="isLogin ? loginForm : signUpForm">
+                <div class="form-group mb-3">
+                    <label for="email">Email del usuario</label>
+                    <input type="text" id="email" class="form-control" formControlName="email" />
+                </div>
+                <div class="form-group mb-3">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" class="form-control" formControlName="password" />
+                </div>
+                <div class="form-group mb-3" *ngIf="!isLogin">
+                    <label for="confirmPassword">Reingresar contraseña</label>
+                    <input type="password" id="confirmPassword" class="form-control"
+                        formControlName="confirmPassword" />
+                </div>
+            </form>
+            <div class="d-flex flex-column align-items-center justify-content-center" *ngIf="isLogin">
+                <p> ¿Se le olvido la contraseña?</p>
+                <button class="btn btn-link" (click)="openRestartModal()">Restablcer Contraseña</button>
+            </div>
+        </div>
+        <div class="card-footer">
+            <button type="button" class="btn btn-primary">Ingresar</button>
+        </div>
+    </div>
+</div>
