@@ -12,7 +12,7 @@ export const routes: Routes = [
         title: 'Iniciar Sesión'
     },
     {
-        path: 'reset-password',
+        path: 'reset-password/:email',
         loadComponent: () => import('./components/reset-password-component/reset-password-component').then(m =>  m.ResetPasswordComponent),
         title: 'Restablecer Contraseña'
     }
