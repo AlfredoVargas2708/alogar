@@ -3,6 +3,7 @@ import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ResetPasswordModal } from './reset-password-modal/reset-password-modal';
 import { MatDialog } from '@angular/material/dialog';
+import { LoginService } from '../../services/login.service';
 
 @Component({
   selector: 'app-login',
@@ -17,7 +18,11 @@ export class Login {
   signUpForm!: FormGroup;
 
   // * Constructor
-  constructor(private fb: FormBuilder, private modalService: MatDialog) {
+  constructor(
+    private fb: FormBuilder,
+    private modalService: MatDialog,
+    private loginService: LoginService
+  ) {
     this.loginForm = this.fb.group({
       email: ['', Validators.required, Validators.email],
       password: ['', [Validators.required, Validators.minLength(8)]]
@@ -40,10 +45,21 @@ export class Login {
   }
 
   openRestartModal() {
-    this.modalService.open(ResetPasswordModal, {
+    const dialogRef = this.modalService.open(ResetPasswordModal, {
       width: '400px',
       height: '250px'
     });
+
+    dialogRef.afterClosed().subscribe(email => {
+      this.loginService.sendResetPassword(email).subscribe({
+        next: (result) => {
+          console.log(result);
+        },
+        error: (error) => {
+          console.error('Error al enviar correo:', error);
+        }
+      })
+    })
   }
 
 }

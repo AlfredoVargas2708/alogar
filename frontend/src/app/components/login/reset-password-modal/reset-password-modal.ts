@@ -19,7 +19,7 @@ export class ResetPasswordModal {
   // * Constructor
   constructor(private fb: FormBuilder) {
     this.resetPasswordForm = this.fb.group({
-      email: ['', Validators.required, Validators.email]
+      email: ['', [Validators.required, Validators.email]]
     })
   }
 }
