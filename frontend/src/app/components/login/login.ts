@@ -5,6 +5,7 @@ import { ResetPasswordModal } from './reset-password-modal/reset-password-modal'
 import { MatDialog } from '@angular/material/dialog';
 import { LoginService } from '../../services/login.service';
 import { Router } from '@angular/router';
+import { showErrorToast, showSuccesToast } from '../../toast'
 
 @Component({
   selector: 'app-login',
@@ -13,12 +14,10 @@ import { Router } from '@angular/router';
   styleUrl: './login.scss'
 })
 export class Login {
-  // * Variables
   isLogin: boolean = true;
   loginForm!: FormGroup;
   signUpForm!: FormGroup;
 
-  // * Constructor
   constructor(
     private fb: FormBuilder,
     private modalService: MatDialog,
@@ -39,7 +38,6 @@ export class Login {
     });
   }
 
-  // * Validador de contraseñas iguales
   passwordsMatchValidator(formGroup: FormGroup): ValidationErrors | null {
     const password = formGroup.get('password')?.value;
     const confirmPassword = formGroup.get('confirmPassword')?.value;
@@ -56,10 +54,11 @@ export class Login {
       if (email) {
         this.loginService.sendResetPassword(email).subscribe({
           next: (result) => {
-            console.log(result);
+            showSuccesToast('Correo enviado', result.message);
           },
           error: (error) => {
             console.error('Error al enviar correo:', error);
+            showErrorToast('Error al enviar correo', error.error.message);
           }
         })
       }
@@ -78,7 +77,6 @@ export class Login {
       return 'La contraseña debe tener al menos 8 caracteres';
     }
 
-    // Revisa si el grupo tiene el error de mismatch y si el control es confirmPassword
     if (controlName === 'confirmPassword' && form.hasError('passwordsMismatch')) {
       return 'Las contraseñas no coinciden';
     }
@@ -90,13 +88,14 @@ export class Login {
       const { email, password } = this.signUpForm.value;
       this.loginService.signUp(email, password).subscribe({
         next: (result) => {
-          console.log('Registro exitoso:', result);
-          this.isLogin = true; // Cambia a la vista de login después del registro exitoso
-          this.loginForm.patchValue({ email, password }); // Rellena el formulario de login con los datos del registro
-          this.signUpForm.reset(); // Limpia el formulario de registro
+          this.isLogin = true;
+          this.loginForm.patchValue({ email, password });
+          this.signUpForm.reset();
+          showSuccesToast('Registro completado', result.message);
         },
         error: (error) => {
           console.error('Error al registrarse:', error);
+          showErrorToast('Error al registrar usuario', error.error.message);
         }
       });
     }
@@ -108,12 +107,15 @@ export class Login {
 
       this.loginService.login(email, password).subscribe({
         next: (result) => {
-          console.log('Inicio de sesión existoso:', result);
           this.loginForm.reset();
-          this.router.navigate(['/dashboard']);
+          showSuccesToast('Acceso Otorgado', result.message);
+          setTimeout(() => {
+            this.router.navigate(['/dashboard']);
+          }, 2000)
         },
         error: (error) => {
           console.error('Error al iniciar sesión:', error);
+          showErrorToast('Error al iniciar sesión', error.error.message);
         }
       })
     }

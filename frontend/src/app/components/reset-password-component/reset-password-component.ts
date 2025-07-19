@@ -2,7 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { UsersService } from '../../services/users.service';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Router } from '@angular/router';
+import { showErrorToast, showSuccesToast } from '../../toast';
 
 @Component({
   selector: 'app-reset-password-component',
@@ -53,11 +54,12 @@ export class ResetPasswordComponent {
 
       this.usersService.resetPassword(email, newPassword).subscribe({
         next: (response) => {
-          console.log('Contraseña restablecida con éxito:', response);
+          showSuccesToast('Contraseña restablecida', response.message);
           this.route.navigate(['/login']);
         },
         error: (error) => {
           console.error('Error al restablecer la contraseña:', error);
+          showErrorToast('Error al restablecer la contraseña', error.error.message);
         }
       })
     }
