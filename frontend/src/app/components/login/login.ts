@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validato
 import { ResetPasswordModal } from './reset-password-modal/reset-password-modal';
 import { MatDialog } from '@angular/material/dialog';
 import { LoginService } from '../../services/login.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-login',
@@ -21,7 +22,8 @@ export class Login {
   constructor(
     private fb: FormBuilder,
     private modalService: MatDialog,
-    private loginService: LoginService
+    private loginService: LoginService,
+    private router: Router
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -100,5 +102,20 @@ export class Login {
     }
   }
 
-  login() {}
+  login() {
+    if (this.loginForm.valid) {
+      const { email, password } = this.loginForm.value;
+
+      this.loginService.login(email, password).subscribe({
+        next: (result) => {
+          console.log('Inicio de sesión existoso:', result);
+          this.loginForm.reset();
+          this.router.navigate(['/dashboard']);
+        },
+        error: (error) => {
+          console.error('Error al iniciar sesión:', error);
+        }
+      })
+    }
+  }
 }
