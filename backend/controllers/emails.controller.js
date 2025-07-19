@@ -26,10 +26,9 @@ class EmailController {
       };
 
       await transporter.sendMail(mailOptions);
-      console.log("Email enviado a", email);
     } catch (error) {
       console.error("Error al enviar email:", error);
-      throw error; // para manejarlo desde el signUp si falla
+      throw error;
     }
   }
 
@@ -68,11 +67,10 @@ class EmailController {
 
       transporter.sendMail(mailOptions, (error, info) => {
         if (error) {
-          console.error("Error sending email:", error);
-          return res.status(500).send({ message: "Failed to send email" });
+          console.error("Error enviando email:", error);
+          return res.status(500).send({ message: "Error enviando email" });
         }
-        console.log("Email sent:", info.response);
-        res.status(200).send({ message: "Email sent successfully" });
+        res.status(200).send({ message: "Email enviado correctamente" });
       });
     } catch (error) {
       console.error("Error in sendResetEmail:", error);
