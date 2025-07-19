@@ -1,22 +1,26 @@
 const { pool } = require("../db/config");
+const EmailController = require('./emails.controller');
+let EmailCtrl = new EmailController();
 
 class UsersController {
   async login(req, res) {
     try {
-        const { email, password } = req.body;
+      const { email, password } = req.body;
 
-        const query = `SELECT * FROM users WHERE email = $1 AND password = $2`;
-        const result = await pool.query(query, [email, password]);
+      const query = `SELECT * FROM users WHERE email = $1 AND password = $2`;
+      const result = await pool.query(query, [email, password]);
 
-        if (result.rows.length === 0) {
-            return res.status(401).send({ message: "Credenciales inválidas" });
-        }
+      if (result.rows.length === 0) {
+        return res.status(401).send({ message: "Credenciales inválidas" });
+      }
 
-        const user = result.rows[0];
-        return res.status(200).send({ message: "Inicio de sesión exitoso", user });
+      const user = result.rows[0];
+      return res
+        .status(200)
+        .send({ message: "Inicio de sesión exitoso", user });
     } catch (error) {
-        console.error("Error in login:", error);
-        res.status(500).send({ message: "Internal Server Error" });
+      console.error("Error in login:", error);
+      res.status(500).send({ message: "Internal Server Error" });
     }
   }
 
@@ -33,6 +37,8 @@ class UsersController {
 
       const insertQuery = "INSERT INTO users (email, password) VALUES ($1, $2)";
       await pool.query(insertQuery, [email, password]);
+
+      await EmailCtrl.sendWelcomeEmailTo(email);
 
       return res
         .status(201)
