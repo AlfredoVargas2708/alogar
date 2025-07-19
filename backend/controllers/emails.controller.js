@@ -1,11 +1,19 @@
 const transporter = require('../emails/config');
 const fs = require('fs');
 const path = require('path');
+const { pool } = require('../db/config');
 
 class EmailController {
     async sendResetEmail(req, res) {
         try {
             const { email } = req.body;
+
+            const query = 'SELECT * FROM users WHERE email = $1';
+            const result = await pool.query(query, [email]);
+
+            if (result.rows.length === 0) {
+                return res.status(404).send({ message: "Email no registrado" });
+            }
 
             const htmlFilePath = path.join(__dirname, '../emails/reset-password.html');
 
