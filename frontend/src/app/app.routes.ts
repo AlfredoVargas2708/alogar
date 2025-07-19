@@ -15,5 +15,10 @@ export const routes: Routes = [
         path: 'reset-password/:email',
         loadComponent: () => import('./components/reset-password-component/reset-password-component').then(m =>  m.ResetPasswordComponent),
         title: 'Restablecer Contraseña'
+    },
+    {
+        path: 'dashboard',
+        loadComponent: () => import('./components/dashboard/dashboard').then(m => m.Dashboard),
+        title: 'Inicio'
     }
 ];
