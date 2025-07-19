@@ -1,6 +1,25 @@
 const { pool } = require("../db/config");
 
 class UsersController {
+  async login(req, res) {
+    try {
+        const { email, password } = req.body;
+
+        const query = `SELECT * FROM users WHERE email = $1 AND password = $2`;
+        const result = await pool.query(query, [email, password]);
+
+        if (result.rows.length === 0) {
+            return res.status(401).send({ message: "Credenciales inválidas" });
+        }
+
+        const user = result.rows[0];
+        return res.status(200).send({ message: "Inicio de sesión exitoso", user });
+    } catch (error) {
+        console.error("Error in login:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+    }
+  }
+
   async signUp(req, res) {
     try {
       const { email, password } = req.body;
